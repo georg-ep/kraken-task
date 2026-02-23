@@ -7,7 +7,7 @@ A tool to automatically scan GitHub repositories for low TypeScript test coverag
 https://www.loom.com/share/6a04ab0379964b83ac842432a90120bd
 
 ## Example PRs
-- Example repo: https://github.com/georg-ep/test-ts-repo/pull/25
+- Example repo: https://github.com/georg-ep/test-ts-repo/
 - PRs: https://github.com/georg-ep/test-ts-repo/pulls
 
 ## Features
