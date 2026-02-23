@@ -2,6 +2,14 @@
 
 A tool to automatically scan GitHub repositories for low TypeScript test coveragen and generate Jest tests via AI to create Pull Requests.
 
+## Video Demo
+
+https://www.loom.com/share/6a04ab0379964b83ac842432a90120bd
+
+## Example PRs
+- Example repo: https://github.com/georg-ep/test-ts-repo/pull/25
+- PRs: https://github.com/georg-ep/test-ts-repo/pulls
+
 ## Features
 - **Coverage Parsing**: Analyzes GitHub repos and finds low test coverage TS files.
 - **AI Test Generation**: Uses the `gemini` CLI tool in an isolated sandbox to generate comprehensive test suites achieving at least 80% coverage.
