@@ -1,0 +1,58 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_PATH=/app/data/database.sqlite
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    env_file:
+      - .env
+    volumes:
+      - backend-data:/app/data
+    depends_on:
+      - redis
+
+  worker:
+    build:
+      context: ./backend
+    command: ["node", "dist/worker.js"]
+    environment:
+      - DB_PATH=/app/data/database.sqlite
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - WORKSPACE_ROOT=${PWD}
+      - HOST_CLONE_BASE_PATH=${PWD}/backend/clones
+    env_file:
+      - .env
+    volumes:
+      - backend-data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backend/clones:/app/clones
+    depends_on:
+      - redis
+      - backend
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  backend-data:
+  redis-data:
+  kraken-npm-cache:
+  kraken-node-modules:
