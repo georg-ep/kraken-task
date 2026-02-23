@@ -7,7 +7,7 @@ import { DatabaseModule } from './infrastructure/database/database.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv, envFilePath: ['.env', '../.env'] }),
 
     DatabaseModule,
     ApiModule,

@@ -74,8 +74,8 @@ The easiest and recommended way to run the entire stack (Frontend, Backend, Work
 
 ```bash
 # 1. Setup environment variables
-cp backend/.env.example backend/.env
-# Edit backend/.env and add your GITHUB_TOKEN and GEMINI_API_KEY
+cp .env.example .env
+# Edit .env and add your GITHUB_TOKEN and GEMINI_API_KEY
 
 # 2. Start the full stack
 docker compose up --build
