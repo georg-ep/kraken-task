@@ -12,10 +12,7 @@ import { ApiController } from './api.controller';
  * Enqueues jobs via BullMQ — actual work happens in the worker process.
  */
 @Module({
-  imports: [
-    DatabaseModule,
-    BullMQModule,
-  ],
+  imports: [DatabaseModule, BullMQModule],
   controllers: [ApiController],
   providers: [
     JobOrchestrationService,

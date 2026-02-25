@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Not, Repository } from 'typeorm';
 import { ImprovementJob } from '../../../domain/job/job.entity';
-import { ACTIVE_JOB_STATUSES, IJobRepository } from '../../../domain/job/job.repository.interface';
+import {
+  ACTIVE_JOB_STATUSES,
+  IJobRepository,
+} from '../../../domain/job/job.repository.interface';
 import { JobTypeormEntity } from '../entities/job.typeorm-entity';
 
 @Injectable()
@@ -29,14 +32,14 @@ export class JobTypeormRepository implements IJobRepository {
       where: { repositoryUrl },
       order: { createdAt: 'DESC' },
     });
-    return entities.map(e => e.toDomain());
+    return entities.map((e) => e.toDomain());
   }
 
   async findAll(): Promise<ImprovementJob[]> {
     const entities = await this.repository.find({
       order: { createdAt: 'DESC' },
     });
-    return entities.map(e => e.toDomain());
+    return entities.map((e) => e.toDomain());
   }
 
   /**

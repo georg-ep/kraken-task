@@ -9,6 +9,6 @@ export interface IAIGenerator {
     sourceFilePath: string,
     testFilePath: string,
     localRepoPath: string,
-    targetCoverage?: number
+    targetCoverage?: number,
   ): Promise<void>;
 }

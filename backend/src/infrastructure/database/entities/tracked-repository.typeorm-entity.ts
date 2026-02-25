@@ -1,4 +1,10 @@
-import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { TrackedRepository } from '../../../domain/repository/tracked-repository.entity';
 
 @Entity('tracked_repositories')
@@ -18,7 +24,9 @@ export class TrackedRepositoryTypeormEntity {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  static fromDomain(domainEntity: TrackedRepository): TrackedRepositoryTypeormEntity {
+  static fromDomain(
+    domainEntity: TrackedRepository,
+  ): TrackedRepositoryTypeormEntity {
     const entity = new TrackedRepositoryTypeormEntity();
     entity.id = domainEntity.id;
     entity.url = domainEntity.url;

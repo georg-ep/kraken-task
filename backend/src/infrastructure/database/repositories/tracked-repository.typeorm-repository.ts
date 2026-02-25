@@ -33,6 +33,6 @@ export class TrackedRepositoryTypeormRepository implements ITrackedRepositoryRep
     const entities = await this.repository.find({
       order: { createdAt: 'DESC' },
     });
-    return entities.map(entity => entity.toDomain());
+    return entities.map((entity) => entity.toDomain());
   }
 }

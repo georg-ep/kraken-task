@@ -3,7 +3,10 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { COVERAGE_IMPROVEMENT_QUEUE, REPO_SCAN_QUEUE } from '../src/infrastructure/jobs/bull-mq.module';
+import {
+  COVERAGE_IMPROVEMENT_QUEUE,
+  REPO_SCAN_QUEUE,
+} from '../src/infrastructure/jobs/bull-mq.module';
 
 describe('ApiController (e2e)', () => {
   let app: INestApplication;
@@ -50,9 +53,9 @@ describe('ApiController (e2e)', () => {
 
     // 3. Verify it was pushed to the BullMQ Queue
     expect(mockQueue.add).toHaveBeenCalledWith(
-      'improve-coverage', 
-      { jobId: response.body.id }, 
-      { jobId: response.body.id }
+      'improve-coverage',
+      { jobId: response.body.id },
+      { jobId: response.body.id },
     );
   });
 
@@ -63,8 +66,10 @@ describe('ApiController (e2e)', () => {
         repositoryUrl: 'https://github.com/test/repo',
         // Missing filePath
       })
-      .expect(400); 
+      .expect(400);
 
-    expect(response.body.message).toContain('repositoryUrl and filePath are required');
+    expect(response.body.message).toContain(
+      'repositoryUrl and filePath are required',
+    );
   });
 });

@@ -1,5 +1,11 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
 import type { IRepositoryHost } from '../../domain/repository/repository-host.interface';
@@ -14,8 +20,10 @@ export class TrackedRepositoryService {
   private readonly logger = new Logger(TrackedRepositoryService.name);
 
   constructor(
-    @Inject(TRACKED_REPOSITORY_REPOSITORY_TOKEN) private readonly repository: ITrackedRepositoryRepository,
-    @Inject(REPOSITORY_HOST_TOKEN) private readonly repositoryHost: IRepositoryHost,
+    @Inject(TRACKED_REPOSITORY_REPOSITORY_TOKEN)
+    private readonly repository: ITrackedRepositoryRepository,
+    @Inject(REPOSITORY_HOST_TOKEN)
+    private readonly repositoryHost: IRepositoryHost,
     @InjectQueue(REPO_SCAN_QUEUE) private readonly scanQueue: Queue,
   ) {}
 
@@ -27,14 +35,19 @@ export class TrackedRepositoryService {
     let repo = await this.repository.findByUrl(url);
     if (!repo) {
       // Pre-flight check: Ensure the repository has 'jest' installed in its package.json
-      const hasJest = await this.repositoryHost.hasRequiredDependencies(url, ['jest', 'ts-jest']);
+      const hasJest = await this.repositoryHost.hasRequiredDependencies(url, [
+        'jest',
+        'ts-jest',
+      ]);
       if (!hasJest) {
-        throw new BadRequestException('Repository must have Jest and ts-jest installed in package.json to be tracked');
+        throw new BadRequestException(
+          'Repository must have Jest and ts-jest installed in package.json to be tracked',
+        );
       }
 
       repo = TrackedRepository.create(uuidv4(), url);
       await this.repository.save(repo);
-      
+
       // Automatically trigger initial scan
       await this.enqueueScan(repo.id);
     }
@@ -51,7 +64,11 @@ export class TrackedRepositoryService {
       throw new NotFoundException('Repository not found');
     }
 
-    await this.scanQueue.add('scan-repo', { repoId: id }, { jobId: `scan-${id}-${Date.now()}` });
+    await this.scanQueue.add(
+      'scan-repo',
+      { repoId: id },
+      { jobId: `scan-${id}-${Date.now()}` },
+    );
     this.logger.log(`Coverage scan enqueued for repo ${id} (${repo.url})`);
     return { queued: true, repoId: id };
   }

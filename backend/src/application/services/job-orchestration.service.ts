@@ -12,14 +12,22 @@ export class JobOrchestrationService {
   private readonly logger = new Logger(JobOrchestrationService.name);
 
   constructor(
-    @Inject(JOB_REPOSITORY_TOKEN) private readonly jobRepository: IJobRepository,
+    @Inject(JOB_REPOSITORY_TOKEN)
+    private readonly jobRepository: IJobRepository,
     @InjectQueue(COVERAGE_IMPROVEMENT_QUEUE) private readonly queue: Queue,
   ) {}
 
-  async createJob(repositoryUrl: string, filePath: string): Promise<ImprovementJob> {
+  async createJob(
+    repositoryUrl: string,
+    filePath: string,
+  ): Promise<ImprovementJob> {
     const job = ImprovementJob.create(uuidv4(), repositoryUrl, filePath);
     await this.jobRepository.save(job);
-    await this.queue.add('improve-coverage', { jobId: job.id }, { jobId: job.id });
+    await this.queue.add(
+      'improve-coverage',
+      { jobId: job.id },
+      { jobId: job.id },
+    );
     this.logger.log(`Job ${job.id} queued for ${filePath} in ${repositoryUrl}`);
     return job;
   }

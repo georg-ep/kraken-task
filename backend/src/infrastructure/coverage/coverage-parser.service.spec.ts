@@ -11,14 +11,21 @@ describe('CoverageParserService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     sandboxExecutor = {
-      resolveInstallCmd: jest.fn().mockResolvedValue('npm install --ignore-scripts'),
+      resolveInstallCmd: jest
+        .fn()
+        .mockResolvedValue('npm install --ignore-scripts'),
       executeCommand: jest.fn().mockResolvedValue({ stdout: '', stderr: '' }),
     } as unknown as jest.Mocked<SandboxExecutorService>;
 
     service = new CoverageParserService(sandboxExecutor);
-    (service as any).logger = { log: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() } as unknown as Logger;
+    (service as any).logger = {
+      log: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    } as unknown as Logger;
   });
 
   describe('The "Broken Repository" Test (Resilience)', () => {
@@ -33,10 +40,16 @@ describe('CoverageParserService', () => {
 
       // 3. Mock sandbox executor:
       // First call (npm install) succeeds
-      sandboxExecutor.executeCommand.mockResolvedValueOnce({ stdout: 'installed', stderr: '' });
+      sandboxExecutor.executeCommand.mockResolvedValueOnce({
+        stdout: 'installed',
+        stderr: '',
+      });
       // Second call (jest) fails, preventing coverage-summary.json from being generated.
       sandboxExecutor.executeCommand.mockRejectedValueOnce(
-        Object.assign(new Error('jest failed'), { code: 1, stderr: 'Jest failed to run correctly' })
+        Object.assign(new Error('jest failed'), {
+          code: 1,
+          stderr: 'Jest failed to run correctly',
+        }),
       );
 
       // 4. Mock fsp.readdir to simulate our fallback walkTs behavior
@@ -49,7 +62,11 @@ describe('CoverageParserService', () => {
         } else if (dir === '/broken/repo/src') {
           return [
             { isDirectory: () => false, isFile: () => true, name: 'main.ts' }, // Skips this because it's listed in SKIP_FILE_REGEXES
-            { isDirectory: () => false, isFile: () => true, name: 'user.controller.ts' }, // Should be captured
+            {
+              isDirectory: () => false,
+              isFile: () => true,
+              name: 'user.controller.ts',
+            }, // Should be captured
           ];
         }
         return [];
@@ -59,17 +76,105 @@ describe('CoverageParserService', () => {
       const results = await service.scanCoverage('/broken/repo');
 
       // Assertions
-      expect(sandboxExecutor.resolveInstallCmd).toHaveBeenCalledWith('/broken/repo');
-      
+      expect(sandboxExecutor.resolveInstallCmd).toHaveBeenCalledWith(
+        '/broken/repo',
+      );
+
       // We expect the fallback walkTs behavior: return mapped string[] array of valid TS files at 0%
       expect(results).toHaveLength(1);
-      
+
       // Node path.relative logic might map differently but it should contain user.controller.ts
       expect(results[0].filePath).toMatch(/user\.controller\.ts$/);
       expect(results[0].linesCoverage).toBe(0);
 
       // Verify the warning was logged
-      expect((service as any).logger.warn).toHaveBeenCalledWith('No coverage-summary.json produced. Returning all source files at 0%.');
+      expect((service as any).logger.warn).toHaveBeenCalledWith(
+        'No coverage-summary.json produced. Returning all source files at 0%.',
+      );
+    });
+  });
+
+  describe('coverage parsing and filtering', () => {
+    it('should parse coverage-summary.json properly and filter out SKIP_DIRS and SKIP_FILE_REGEXES', async () => {
+      // Mock node_modules existing
+      (fsp.access as jest.Mock).mockResolvedValue(undefined);
+
+      // Mock package.json without jest (inject our config)
+      (fsp.readFile as jest.Mock).mockImplementation(async (filePath) => {
+        if (filePath.endsWith('package.json')) return '{}';
+        if (filePath.endsWith('coverage-summary.json')) {
+          return JSON.stringify({
+            total: { lines: { pct: 50 } },
+            '/tmp/repo/src/user.controller.ts': { lines: { pct: 80 } },
+            '/tmp/repo/src/interfaces/index.ts': { lines: { pct: 100 } }, // should skip due to SKIP_DIRS ('interfaces')
+            '/tmp/repo/src/main.ts': { lines: { pct: 10 } }, // should skip due to SKIP_FILE_REGEXES
+            '/tmp/repo/src/outside/../../other/file.ts': { lines: { pct: 40 } }, // outside repo root, fallback
+          });
+        }
+        return '';
+      });
+
+      // Mock realpath to just return the path (this makes the '..' path start with '..'
+      // relative to /tmp/repo when relativized)
+      (fsp.realpath as jest.Mock).mockImplementation(async (p) => p);
+      (fsp.writeFile as jest.Mock).mockResolvedValue(undefined);
+      (fsp.unlink as jest.Mock).mockResolvedValue(undefined);
+
+      // Mock jest execution succeeding
+      sandboxExecutor.executeCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+      });
+
+      const results = await service.scanCoverage('/tmp/repo');
+      console.log('RESULTS:', results);
+
+      expect(results.length).toBe(2);
+      expect(
+        results.find((r) => r.filePath === 'src/user.controller.ts')
+          ?.linesCoverage,
+      ).toBe(80);
+      expect(
+        results.find((r) => r.filePath === 'other/file.ts')?.linesCoverage,
+      ).toBe(40);
+    });
+
+    it('should fallback to walkTs when coverage-summary.json contains no valid entries after filtering', async () => {
+      (fsp.access as jest.Mock).mockResolvedValue(undefined);
+      (fsp.readFile as jest.Mock).mockImplementation(async (filePath) => {
+        if (filePath.endsWith('package.json')) return '{}';
+        if (filePath.endsWith('coverage-summary.json'))
+          return JSON.stringify({}); // empty coverage
+        return '';
+      });
+      (fsp.realpath as jest.Mock).mockImplementation(async (p) => p);
+      (fsp.writeFile as jest.Mock).mockResolvedValue(undefined);
+      (fsp.unlink as jest.Mock).mockResolvedValue(undefined);
+      sandboxExecutor.executeCommand.mockResolvedValue({
+        stdout: '',
+        stderr: '',
+      });
+      (fsp.readdir as jest.Mock).mockResolvedValue([]); // return empty from fallback walkTs
+
+      const results = await service.scanCoverage('/tmp/repo');
+      expect(results).toEqual([]);
+      expect((service as any).logger.warn).toHaveBeenCalledWith(
+        'coverage-summary.json had no file entries. Falling back to source file walk at 0%.',
+      );
+    });
+
+    it('should throw an Error wrapping the underlying error on total failure', async () => {
+      (fsp.access as jest.Mock).mockRejectedValueOnce(new Error('ENOENT')); // no node_modules
+      sandboxExecutor.resolveInstallCmd.mockResolvedValue('npm install');
+
+      const timeoutError = new Error('Command timed out');
+      (timeoutError as any).code = 'ETIMEDOUT';
+      (timeoutError as any).killed = true;
+      sandboxExecutor.executeCommand.mockRejectedValueOnce(timeoutError);
+
+      await expect(service.scanCoverage('/tmp/repo')).rejects.toThrow(
+        'Coverage scanning failed: Process timed out after being killed',
+      );
     });
   });
 });

@@ -21,7 +21,10 @@ import { TrackedRepositoryTypeormRepository } from './repositories/tracked-repos
       }),
       inject: [ConfigService],
     }),
-    TypeOrmModule.forFeature([JobTypeormEntity, TrackedRepositoryTypeormEntity]),
+    TypeOrmModule.forFeature([
+      JobTypeormEntity,
+      TrackedRepositoryTypeormEntity,
+    ]),
   ],
   providers: [
     {

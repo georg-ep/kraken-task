@@ -31,10 +31,10 @@ CONSTRAINTS:
     pkgs: string,
     importPath: string,
     signatures: string,
-    lastError: string
+    lastError: string,
   ): string {
-    const errorSection = lastError 
-      ? `LAST VALIDATION ATTEMPT FAILED WITH ERROR:\n${lastError}\n\nPlease analyze the error and repair the code below.` 
+    const errorSection = lastError
+      ? `LAST VALIDATION ATTEMPT FAILED WITH ERROR:\n${lastError}\n\nPlease analyze the error and repair the code below.`
       : 'Please generate the initial test suite now.';
 
     return `

@@ -14,9 +14,12 @@ export class RepoScanProcessor extends WorkerHost {
   private readonly logger = new Logger(RepoScanProcessor.name);
 
   constructor(
-    @Inject(TRACKED_REPOSITORY_REPOSITORY_TOKEN) private readonly repoRepository: ITrackedRepositoryRepository,
-    @Inject(REPOSITORY_HOST_TOKEN) private readonly repositoryHost: IRepositoryHost,
-    @Inject(COVERAGE_PARSER_TOKEN) private readonly coverageParser: ICoverageParser,
+    @Inject(TRACKED_REPOSITORY_REPOSITORY_TOKEN)
+    private readonly repoRepository: ITrackedRepositoryRepository,
+    @Inject(REPOSITORY_HOST_TOKEN)
+    private readonly repositoryHost: IRepositoryHost,
+    @Inject(COVERAGE_PARSER_TOKEN)
+    private readonly coverageParser: ICoverageParser,
   ) {
     super();
   }
@@ -37,14 +40,19 @@ export class RepoScanProcessor extends WorkerHost {
       const coverage = await this.coverageParser.scanCoverage(localPath);
       repo.updateCoverage(coverage);
       await this.repoRepository.save(repo);
-      this.logger.log(`Scan complete for ${repo.url} — ${coverage.length} files`);
+      this.logger.log(
+        `Scan complete for ${repo.url} — ${coverage.length} files`,
+      );
     } catch (err) {
       this.logger.error(`Scan failed for repo ${repoId}`, err);
       throw err; // let BullMQ handle retries
     } finally {
       if (localPath) {
-        await this.repositoryHost.cleanupLocalRepository(localPath).catch(err =>
-          this.logger.error(`Cleanup failed for ${localPath}`, err));
+        await this.repositoryHost
+          .cleanupLocalRepository(localPath)
+          .catch((err) =>
+            this.logger.error(`Cleanup failed for ${localPath}`, err),
+          );
       }
     }
   }

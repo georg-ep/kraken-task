@@ -24,7 +24,11 @@ import { TestValidatorService } from './infrastructure/validation/test-validator
  */
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv, envFilePath: ['.env', '../.env'] }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: validateEnv,
+      envFilePath: ['.env', '../.env'],
+    }),
 
     DatabaseModule,
     BullMQModule,

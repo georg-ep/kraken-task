@@ -18,7 +18,10 @@ export class GitHubService implements IRepositoryHost {
   }
 
   // Used for checking if the repository has specific dependencies (like 'jest')
-  async hasRequiredDependencies(repositoryUrl: string, dependencies: string[]): Promise<boolean> {
+  async hasRequiredDependencies(
+    repositoryUrl: string,
+    dependencies: string[],
+  ): Promise<boolean> {
     const match = repositoryUrl.match(/github\.com\/([^/]+)\/([^/.]+)/);
     if (!match) {
       throw new Error(`Invalid GitHub repository URL: ${repositoryUrl}`);
@@ -33,20 +36,28 @@ export class GitHubService implements IRepositoryHost {
         path: 'package.json',
       });
 
-      if (!Array.isArray(response.data) && response.data.type === 'file' && response.data.content) {
-        const content = Buffer.from(response.data.content, 'base64').toString('utf8');
+      if (
+        !Array.isArray(response.data) &&
+        response.data.type === 'file' &&
+        response.data.content
+      ) {
+        const content = Buffer.from(response.data.content, 'base64').toString(
+          'utf8',
+        );
         const pkg = JSON.parse(content);
-        
+
         const allDeps = {
           ...(pkg.dependencies || {}),
-          ...(pkg.devDependencies || {})
+          ...(pkg.devDependencies || {}),
         };
 
-        return dependencies.every(dep => !!allDeps[dep]);
+        return dependencies.every((dep) => !!allDeps[dep]);
       }
       return false;
     } catch (error) {
-      this.logger.error(`Error checking dependencies for ${owner}/${repo}: ${error.message}`);
+      this.logger.error(
+        `Error checking dependencies for ${owner}/${repo}: ${error.message}`,
+      );
       return false;
     }
   }
@@ -54,7 +65,9 @@ export class GitHubService implements IRepositoryHost {
   // Used for checking if the token has push ('write') or admin access
   async checkPermissions(repositoryUrl: string): Promise<boolean> {
     if (!this.configService.get<string>('GITHUB_TOKEN')) {
-      this.logger.warn('No GITHUB_TOKEN set, mocking permission check (returning true).');
+      this.logger.warn(
+        'No GITHUB_TOKEN set, mocking permission check (returning true).',
+      );
       return true;
     }
 
@@ -71,46 +84,61 @@ export class GitHubService implements IRepositoryHost {
       });
 
       // Check if the token has push ('write') or admin access
-      return !!(response.data.permissions?.push || response.data.permissions?.admin);
+      return !!(
+        response.data.permissions?.push || response.data.permissions?.admin
+      );
     } catch (error) {
-      this.logger.error(`Error checking permissions for ${owner}/${repo}:`, error.message);
+      this.logger.error(
+        `Error checking permissions for ${owner}/${repo}:`,
+        error.message,
+      );
       return false; // Typically 403 or 404 if no access
     }
   }
 
-  async cloneRepository(repositoryUrl: string, branch?: string): Promise<string> {
+  async cloneRepository(
+    repositoryUrl: string,
+    branch?: string,
+  ): Promise<string> {
     const clonesBase = '/app/clones';
     try {
       await fs.access(clonesBase);
     } catch {
       await fs.mkdir(clonesBase, { recursive: true });
     }
-    const tmpDir = await fs.mkdtemp(path.join(clonesBase, 'coverage-improver-'));
+    const tmpDir = await fs.mkdtemp(
+      path.join(clonesBase, 'coverage-improver-'),
+    );
     this.logger.log(`Cloning ${repositoryUrl} to ${tmpDir}`);
-    
+
     const git: SimpleGit = simpleGit();
-    
+
     // Avoid injecting the token directly into the URL where it can be logged.
     // Instead we pass it securely via git config (http.extraHeader).
     const token = this.configService.get<string>('GITHUB_TOKEN');
     const cloneOptions = [];
-    
+
     if (branch) {
       cloneOptions.push('--branch', branch, '--single-branch');
     }
-    
+
     if (token) {
-      const basicAuth = Buffer.from(`x-access-token:${token}`).toString('base64');
-      cloneOptions.push('-c', `http.extraHeader=AUTHORIZATION: basic ${basicAuth}`);
+      const basicAuth = Buffer.from(`x-access-token:${token}`).toString(
+        'base64',
+      );
+      cloneOptions.push(
+        '-c',
+        `http.extraHeader=AUTHORIZATION: basic ${basicAuth}`,
+      );
     }
 
     await git.clone(repositoryUrl, tmpDir, cloneOptions);
-    
+
     // Setup git config for the cloned repo
     const localGit = simpleGit(tmpDir);
     await localGit.addConfig('user.name', 'Coverage Improver AI');
     await localGit.addConfig('user.email', 'ai-coverage@kraken.invalid');
-    
+
     return tmpDir;
   }
 
@@ -165,7 +193,7 @@ export class GitHubService implements IRepositoryHost {
     branchName: string,
     title: string,
     body: string,
-    baseBranch: string = 'main'
+    baseBranch: string = 'main',
   ): Promise<string> {
     // repositoryUrl example: https://github.com/torvalds/linux
     const match = repositoryUrl.match(/github\.com\/([^/]+)\/([^/.]+)/);
@@ -174,8 +202,10 @@ export class GitHubService implements IRepositoryHost {
     }
     const [, owner, repo] = match;
 
-    this.logger.log(`Creating PR for ${owner}/${repo} from ${branchName} to ${baseBranch}`);
-    
+    this.logger.log(
+      `Creating PR for ${owner}/${repo} from ${branchName} to ${baseBranch}`,
+    );
+
     if (!this.configService.get<string>('GITHUB_TOKEN')) {
       this.logger.warn('No GITHUB_TOKEN set, mocking PR creation.');
       return `${repositoryUrl}/pull/mock-123`;

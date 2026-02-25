@@ -35,7 +35,10 @@ export class DependencyAnalyzerService {
    * Analyzes a source file to extract its dependencies and their public method signatures.
    * Handles both NestJS classes (constructor injection) and plain module usage (top-level imports).
    */
-  async analyze(sourceFilePath: string, repoRoot: string): Promise<DependencyContext[]> {
+  async analyze(
+    sourceFilePath: string,
+    repoRoot: string,
+  ): Promise<DependencyContext[]> {
     try {
       this.logger.log(`Analyzing dependencies for ${sourceFilePath}...`);
       const sourceFile = this.project.addSourceFileAtPath(sourceFilePath);
@@ -57,26 +60,56 @@ export class DependencyAnalyzerService {
       const imports = sourceFile.getImportDeclarations();
       for (const imp of imports) {
         const moduleSpecifier = imp.getModuleSpecifierValue();
-        
+
         // Special Case: Prisma
-        if (moduleSpecifier.includes('prisma') || moduleSpecifier.includes('Prisma')) {
+        if (
+          moduleSpecifier.includes('prisma') ||
+          moduleSpecifier.includes('Prisma')
+        ) {
           dependencies.set('prisma', {
             name: 'prisma',
             methods: [
-              { name: 'findUnique', parameters: 'options: any', returnType: 'Promise<any>' },
-              { name: 'findMany', parameters: 'options: any', returnType: 'Promise<any[]>' },
-              { name: 'create', parameters: 'options: any', returnType: 'Promise<any>' },
-              { name: 'update', parameters: 'options: any', returnType: 'Promise<any>' },
-              { name: 'delete', parameters: 'options: any', returnType: 'Promise<any>' },
-              { name: 'count', parameters: 'options: any', returnType: 'Promise<number>' },
-            ]
+              {
+                name: 'findUnique',
+                parameters: 'options: any',
+                returnType: 'Promise<any>',
+              },
+              {
+                name: 'findMany',
+                parameters: 'options: any',
+                returnType: 'Promise<any[]>',
+              },
+              {
+                name: 'create',
+                parameters: 'options: any',
+                returnType: 'Promise<any>',
+              },
+              {
+                name: 'update',
+                parameters: 'options: any',
+                returnType: 'Promise<any>',
+              },
+              {
+                name: 'delete',
+                parameters: 'options: any',
+                returnType: 'Promise<any>',
+              },
+              {
+                name: 'count',
+                parameters: 'options: any',
+                returnType: 'Promise<number>',
+              },
+            ],
           });
         }
       }
 
       return Array.from(dependencies.values());
     } catch (error) {
-      this.logger.error(`Failed to analyze dependencies for ${sourceFilePath}:`, error);
+      this.logger.error(
+        `Failed to analyze dependencies for ${sourceFilePath}:`,
+        error,
+      );
       return [];
     }
   }
@@ -86,7 +119,12 @@ export class DependencyAnalyzerService {
     if (!typeSymbol) return null;
 
     const typeName = typeSymbol.getName();
-    const skipTypes = ['Logger', 'ConfigService', 'EventEmitter2', 'Repository'];
+    const skipTypes = [
+      'Logger',
+      'ConfigService',
+      'EventEmitter2',
+      'Repository',
+    ];
     if (skipTypes.includes(typeName)) return null;
 
     const declarations = typeSymbol.getDeclarations();
@@ -96,11 +134,21 @@ export class DependencyAnalyzerService {
     if (!(declaration instanceof ClassDeclaration)) return null;
 
     const methods: DependencyMethod[] = [];
-    for (const method of declaration.getMethods().filter(m => !m.getScope() || m.getScope() === 'public')) {
+    for (const method of declaration
+      .getMethods()
+      .filter((m) => !m.getScope() || m.getScope() === 'public')) {
       methods.push({
         name: method.getName(),
-        parameters: method.getParameters().map(p => `${p.getName()}: ${p.getType().getText(undefined, TypeFormatFlags.NoTruncation)}`).join(', '),
-        returnType: method.getReturnType().getText(undefined, TypeFormatFlags.NoTruncation),
+        parameters: method
+          .getParameters()
+          .map(
+            (p) =>
+              `${p.getName()}: ${p.getType().getText(undefined, TypeFormatFlags.NoTruncation)}`,
+          )
+          .join(', '),
+        returnType: method
+          .getReturnType()
+          .getText(undefined, TypeFormatFlags.NoTruncation),
       });
     }
 
@@ -114,8 +162,9 @@ export class DependencyAnalyzerService {
     if (dependencies.length === 0) return '';
 
     let output = '\nINJECTED DEPENDENCY SIGNATURES (Use these for mocking):\n';
-    output += 'NOTE: If a type definition is missing or too complex, you are encouraged to use `any` for mocks to ensure the test compiles.\n';
-    
+    output +=
+      'NOTE: If a type definition is missing or too complex, you are encouraged to use `any` for mocks to ensure the test compiles.\n';
+
     for (const dep of dependencies) {
       output += `\nClass ${dep.name} {\n`;
       for (const method of dep.methods) {

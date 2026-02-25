@@ -17,7 +17,7 @@ export class ImprovementJob {
     id: string,
     repositoryUrl: string,
     filePath: string,
-    targetCoverage: number = 80
+    targetCoverage: number = 80,
   ): ImprovementJob {
     return new ImprovementJob(
       id,
@@ -32,11 +32,14 @@ export class ImprovementJob {
     );
   }
 
-  public updateStatus(status: JobStatus, errorMessage?: string, prLink?: string): void {
+  public updateStatus(
+    status: JobStatus,
+    errorMessage?: string,
+    prLink?: string,
+  ): void {
     this.status = status;
     if (errorMessage) this.errorMessage = errorMessage;
     if (prLink) this.prLink = prLink;
     this.updatedAt = new Date();
   }
 }
-

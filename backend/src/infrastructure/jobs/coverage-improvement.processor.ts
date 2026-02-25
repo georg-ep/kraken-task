@@ -14,9 +14,7 @@ import { COVERAGE_IMPROVEMENT_QUEUE } from './bull-mq.module';
 export class CoverageImprovementProcessor extends WorkerHost {
   private readonly logger = new Logger(CoverageImprovementProcessor.name);
 
-  constructor(
-    private readonly improveCoverageUseCase: ImproveCoverageUseCase,
-  ) {
+  constructor(private readonly improveCoverageUseCase: ImproveCoverageUseCase) {
     super();
   }
 

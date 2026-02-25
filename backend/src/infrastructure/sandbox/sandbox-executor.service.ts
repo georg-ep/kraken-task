@@ -15,7 +15,6 @@ const execAsync = promisify(exec);
  */
 const TOOLCHAIN_VOLUME = 'kraken-node-modules';
 
-
 @Injectable()
 export class SandboxExecutorService implements OnApplicationBootstrap {
   private readonly logger = new Logger(SandboxExecutorService.name);
@@ -36,15 +35,27 @@ export class SandboxExecutorService implements OnApplicationBootstrap {
     this.logger.log('Checking verification toolchain volume…');
     try {
       // Check for a marker file that we write after a successful install.
-      const checkResult = await this.runCommand('docker', [
-        'run', '--rm',
-        '-v', `${TOOLCHAIN_VOLUME}:/toolchain`,
-        'node:20-alpine',
-        'sh', '-c', 'test -f /toolchain/node_modules/.bin/jest && test -f /toolchain/node_modules/.bin/gemini && echo WARM || echo COLD',
-      ], process.cwd(), {}, 30000);
+      const checkResult = await this.runCommand(
+        'docker',
+        [
+          'run',
+          '--rm',
+          '-v',
+          `${TOOLCHAIN_VOLUME}:/toolchain`,
+          'node:20-alpine',
+          'sh',
+          '-c',
+          'test -f /toolchain/node_modules/.bin/jest && test -f /toolchain/node_modules/.bin/gemini && echo WARM || echo COLD',
+        ],
+        process.cwd(),
+        {},
+        30000,
+      );
 
       if (checkResult.output.trim() === 'WARM') {
-        this.logger.log('Verification toolchain already warm — skipping install.');
+        this.logger.log(
+          'Verification toolchain already warm — skipping install.',
+        );
         return;
       }
 
@@ -62,20 +73,35 @@ export class SandboxExecutorService implements OnApplicationBootstrap {
         'echo INSTALLED',
       ].join(' && ');
 
-      const installResult = await this.runCommand('docker', [
-        'run', '--rm',
-        '--user', 'root',
-        '--network', 'bridge',
-        '-v', `${TOOLCHAIN_VOLUME}:/toolchain`,
-        '-v', 'kraken-npm-cache:/root/.npm',
-        'node:20-alpine',
-        'sh', '-c', installScript,
-      ], process.cwd(), {}, 300000);
+      const installResult = await this.runCommand(
+        'docker',
+        [
+          'run',
+          '--rm',
+          '--user',
+          'root',
+          '--network',
+          'bridge',
+          '-v',
+          `${TOOLCHAIN_VOLUME}:/toolchain`,
+          '-v',
+          'kraken-npm-cache:/root/.npm',
+          'node:20-alpine',
+          'sh',
+          '-c',
+          installScript,
+        ],
+        process.cwd(),
+        {},
+        300000,
+      );
 
       if (installResult.output.includes('INSTALLED')) {
         this.logger.log('Verification toolchain installed and ready.');
       } else {
-        this.logger.error(`Toolchain install may have failed:\n${installResult.output}`);
+        this.logger.error(
+          `Toolchain install may have failed:\n${installResult.output}`,
+        );
       }
     } catch (err) {
       this.logger.error('Failed to warm verification toolchain:', err);
@@ -91,23 +117,32 @@ export class SandboxExecutorService implements OnApplicationBootstrap {
     allowNetwork = false,
     runAsRoot = false,
   ): Promise<{ success: boolean; output: string }> {
-    const hostBase = this.configService.get<string>('HOST_CLONE_BASE_PATH') || '/tmp/clones';
+    const hostBase =
+      this.configService.get<string>('HOST_CLONE_BASE_PATH') || '/tmp/clones';
     const folderName = path.basename(localRepoPath);
     const hostRepoPath = path.join(hostBase, folderName);
 
     const fullCommand = `${command} ${args.join(' ')}`;
 
     const dockerArgs = [
-      'run', '--rm',
-      '--user', runAsRoot ? 'root' : 'node',
-      '--network', allowNetwork ? 'bridge' : 'none',
+      'run',
+      '--rm',
+      '--user',
+      runAsRoot ? 'root' : 'node',
+      '--network',
+      allowNetwork ? 'bridge' : 'none',
       ...Object.entries(env).flatMap(([k, v]) => ['-e', `${k}=${v}`]),
-      '-v', `${hostRepoPath}:/app`,
+      '-v',
+      `${hostRepoPath}:/app`,
       // Shared persistent toolchain — pre-warmed once at startup; zero install cost per job.
-      '-v', `${TOOLCHAIN_VOLUME}:/toolchain`,
-      '-w', '/app',
+      '-v',
+      `${TOOLCHAIN_VOLUME}:/toolchain`,
+      '-w',
+      '/app',
       'node:20-alpine',
-      'sh', '-c', `NODE_PATH=/toolchain/node_modules ${fullCommand}`,
+      'sh',
+      '-c',
+      `NODE_PATH=/toolchain/node_modules ${fullCommand}`,
     ];
 
     this.logger.debug(`[SANDBOX] docker ${dockerArgs.join(' ')}`);
@@ -130,7 +165,9 @@ export class SandboxExecutorService implements OnApplicationBootstrap {
 
       const timeout = setTimeout(() => {
         child.kill();
-        this.logger.error(`Command ${command} ${args.join(' ')} timed out after ${timeoutMs}ms`);
+        this.logger.error(
+          `Command ${command} ${args.join(' ')} timed out after ${timeoutMs}ms`,
+        );
         resolve({ success: false, output: output + '\nTIMEOUT' });
       }, timeoutMs);
 
@@ -150,7 +187,15 @@ export class SandboxExecutorService implements OnApplicationBootstrap {
     });
   }
 
-  async executeCommand(command: string, options: { cwd: string; timeout?: number; maxBuffer?: number; env?: Record<string, string> }): Promise<{ stdout: string; stderr: string }> {
+  async executeCommand(
+    command: string,
+    options: {
+      cwd: string;
+      timeout?: number;
+      maxBuffer?: number;
+      env?: Record<string, string>;
+    },
+  ): Promise<{ stdout: string; stderr: string }> {
     return execAsync(command, {
       ...options,
       env: { ...process.env, ...options.env },
@@ -158,7 +203,11 @@ export class SandboxExecutorService implements OnApplicationBootstrap {
   }
 
   async resolveInstallCmd(localPath: string): Promise<string> {
-    const exists = async (p: string) => fsp.access(p).then(() => true).catch(() => false);
+    const exists = async (p: string) =>
+      fsp
+        .access(p)
+        .then(() => true)
+        .catch(() => false);
     if (await exists(path.join(localPath, 'package-lock.json'))) {
       return 'npm ci --ignore-scripts';
     }

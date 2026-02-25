@@ -19,7 +19,7 @@ describe('ImproveCoverageUseCase', () => {
   let jobRepository: jest.Mocked<IJobRepository>;
   let githubService: jest.Mocked<IRepositoryHost>;
   let aiGenerator: jest.Mocked<IAIGenerator>;
-  
+
   const mockJobId = 'test-job-1';
   const mockRepoUrl = 'https://github.com/test/repo';
   const mockFilePath = 'src/test.file.ts';
@@ -50,9 +50,16 @@ describe('ImproveCoverageUseCase', () => {
       generateTest: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<IAIGenerator>;
 
-    useCase = new ImproveCoverageUseCase(jobRepository, githubService, aiGenerator);
+    useCase = new ImproveCoverageUseCase(
+      jobRepository,
+      githubService,
+      aiGenerator,
+    );
     // Suppress logger output to keep test console clean
-    (useCase as any).logger = { log: jest.fn(), error: jest.fn() } as unknown as Logger;
+    (useCase as any).logger = {
+      log: jest.fn(),
+      error: jest.fn(),
+    } as unknown as Logger;
   });
 
   it('should abort if job is not found', async () => {
@@ -60,12 +67,14 @@ describe('ImproveCoverageUseCase', () => {
     await useCase.execute('invalid-id');
 
     expect(githubService.checkPermissions).not.toHaveBeenCalled();
-    expect((useCase as any).logger.error).toHaveBeenCalledWith('Job invalid-id not found');
+    expect((useCase as any).logger.error).toHaveBeenCalledWith(
+      'Job invalid-id not found',
+    );
   });
 
   it('should fail the job if github permissions and push access fail', async () => {
     githubService.checkPermissions.mockResolvedValueOnce(false);
-    
+
     await useCase.execute(mockJobId);
 
     expect(mockJob.status).toBe(JobStatus.FAILED);
@@ -82,15 +91,17 @@ describe('ImproveCoverageUseCase', () => {
 
     // Verify updates flow
     expect(jobRepository.save).toHaveBeenCalledTimes(5); // CLONING, ANALYZING, GENERATING, PUSHING, PR_CREATED
-    
+
     expect(githubService.cloneRepository).toHaveBeenCalledWith(mockRepoUrl);
-    expect(githubService.getDefaultBranch).toHaveBeenCalledWith('/tmp/clones/repo');
-    
+    expect(githubService.getDefaultBranch).toHaveBeenCalledWith(
+      '/tmp/clones/repo',
+    );
+
     expect(aiGenerator.generateTest).toHaveBeenCalledWith(
       mockFilePath,
       'src/test.file.test.ts', // the .test.ts default fallback
       '/tmp/clones/repo',
-      80
+      80,
     );
 
     expect(githubService.commitAndPushChanges).toHaveBeenCalledWith(
@@ -106,14 +117,16 @@ describe('ImproveCoverageUseCase', () => {
       `improve-coverage-${mockJobId}`,
       `Improve test coverage for ${mockFilePath}`,
       expect.any(String),
-      'main'
+      'main',
     );
 
     expect(mockJob.status).toBe(JobStatus.PR_CREATED);
     expect(mockJob.prLink).toBe('https://github.com/pr/1');
 
     // Ensure cleanup always happens
-    expect(githubService.cleanupLocalRepository).toHaveBeenCalledWith('/tmp/clones/repo');
+    expect(githubService.cleanupLocalRepository).toHaveBeenCalledWith(
+      '/tmp/clones/repo',
+    );
   });
 
   it('should fail nicely when the file to improve does not exist in the cloned repo', async () => {
@@ -123,15 +136,21 @@ describe('ImproveCoverageUseCase', () => {
     await useCase.execute(mockJobId);
 
     expect(mockJob.status).toBe(JobStatus.FAILED);
-    expect(mockJob.errorMessage).toContain(`File ${mockFilePath} not found in repository`);
-    
+    expect(mockJob.errorMessage).toContain(
+      `File ${mockFilePath} not found in repository`,
+    );
+
     // Cleanup should still run!
-    expect(githubService.cleanupLocalRepository).toHaveBeenCalledWith('/tmp/clones/repo');
+    expect(githubService.cleanupLocalRepository).toHaveBeenCalledWith(
+      '/tmp/clones/repo',
+    );
   });
 
   it('should transition to FAILED and still cleanup on arbitrary inner errors', async () => {
     // Mock clone to throw error
-    githubService.cloneRepository.mockRejectedValueOnce(new Error('Git clone failed'));
+    githubService.cloneRepository.mockRejectedValueOnce(
+      new Error('Git clone failed'),
+    );
 
     await useCase.execute(mockJobId);
 

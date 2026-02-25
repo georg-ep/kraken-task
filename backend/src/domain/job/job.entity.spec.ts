@@ -31,7 +31,7 @@ describe('ImprovementJob', () => {
     it('should update the status and updatedAt properties', () => {
       const job = ImprovementJob.create('1', 'url', 'path');
       const initialDate = job.updatedAt!;
-      
+
       // Simulate time passing
       jest.useFakeTimers();
       jest.advanceTimersByTime(100);
@@ -47,7 +47,7 @@ describe('ImprovementJob', () => {
     it('should update errorMessage when provided', () => {
       const job = ImprovementJob.create('1', 'url', 'path');
       job.updateStatus(JobStatus.FAILED, 'Something went wrong');
-      
+
       expect(job.status).toBe(JobStatus.FAILED);
       expect(job.errorMessage).toBe('Something went wrong');
       expect(job.prLink).toBeUndefined();
@@ -55,8 +55,12 @@ describe('ImprovementJob', () => {
 
     it('should update prLink when provided', () => {
       const job = ImprovementJob.create('1', 'url', 'path');
-      job.updateStatus(JobStatus.PR_CREATED, undefined, 'https://github.com/pr/1');
-      
+      job.updateStatus(
+        JobStatus.PR_CREATED,
+        undefined,
+        'https://github.com/pr/1',
+      );
+
       expect(job.status).toBe(JobStatus.PR_CREATED);
       expect(job.prLink).toBe('https://github.com/pr/1');
       expect(job.errorMessage).toBeUndefined();

@@ -5,7 +5,10 @@ export interface IRepositoryHost {
    * Checks if the repository contains specific dependencies in its package.json.
    * Useful to ensure the project has required tooling (e.g., jest) before cloning.
    */
-  hasRequiredDependencies(repositoryUrl: string, dependencies: string[]): Promise<boolean>;
+  hasRequiredDependencies(
+    repositoryUrl: string,
+    dependencies: string[],
+  ): Promise<boolean>;
 
   /**
    * Checks if the current token has push permissions to the repository.
@@ -46,9 +49,9 @@ export interface IRepositoryHost {
     branchName: string,
     title: string,
     body: string,
-    baseBranch?: string
+    baseBranch?: string,
   ): Promise<string>;
-  
+
   /**
    * Cleans up the cloned repository.
    */

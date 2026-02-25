@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Dirent } from 'fs';
 import * as fsp from 'fs/promises';
 import * as path from 'path';
-import { FileCoverage, ICoverageParser } from '../../domain/coverage/coverage-parser.interface';
+import {
+  FileCoverage,
+  ICoverageParser,
+} from '../../domain/coverage/coverage-parser.interface';
 import { SandboxExecutorService } from '../sandbox/sandbox-executor.service';
 
 // ─── constants ───────────────────────────────────────────────────────────────
@@ -24,9 +27,19 @@ const MAX_BUFFER_BYTES = 10 * 1024 * 1024; // 10 MB
  * Skipping them speeds up the fallback file-walk significantly.
  */
 const SKIP_DIRS = new Set([
-  'node_modules', 'dist', 'build', 'coverage', '.git',
-  'interfaces', 'interface', 'types', 'type',
-  'enums', 'enum', 'constants', 'typings',
+  'node_modules',
+  'dist',
+  'build',
+  'coverage',
+  '.git',
+  'interfaces',
+  'interface',
+  'types',
+  'type',
+  'enums',
+  'enum',
+  'constants',
+  'typings',
 ]);
 
 /**
@@ -41,20 +54,28 @@ const SKIP_DIRS = new Set([
  */
 const SKIP_SUFFIXES = [
   '*.d.ts',
-  '*.interface.ts', '*.interfaces.ts',
-  '*.types.ts',     '*.type.ts',
-  '*.enum.ts',      '*.enums.ts',
-  '*.constants.ts', '*.constant.ts',
-  '*.spec.ts',      '*.test.ts',
-  '*.spec.tsx',     '*.test.tsx',
-  '*app.ts',        '*main.ts',
-  '*index.ts',      '*.module.ts',
+  '*.interface.ts',
+  '*.interfaces.ts',
+  '*.types.ts',
+  '*.type.ts',
+  '*.enum.ts',
+  '*.enums.ts',
+  '*.constants.ts',
+  '*.constant.ts',
+  '*.spec.ts',
+  '*.test.ts',
+  '*.spec.tsx',
+  '*.test.tsx',
+  '*app.ts',
+  '*main.ts',
+  '*index.ts',
+  '*.module.ts',
   '*.entity.ts',
 ] as const;
 
 // Compiled regexes for fast matching in the file-walker.
 const SKIP_FILE_REGEXES = SKIP_SUFFIXES.map(
-  s => new RegExp(s.replace('*', '.*').replace('.', '\\.') + '$')
+  (s) => new RegExp(s.replace('*', '.*').replace('.', '\\.') + '$'),
 );
 
 /**
@@ -70,14 +91,14 @@ const TEMP_JEST_CONFIG_NAME = 'jest.config.ci-scan.cjs';
 
 /** Build collectCoverageFrom exclusions from SKIP_SUFFIXES so they never drift. */
 function buildCollectCoverageFrom(): string[] {
-  const excludes = SKIP_SUFFIXES.map(s => `!**/${s}`);
-  const dirExcludes = Array.from(SKIP_DIRS).map(d => `!**/${d}/**`);
+  const excludes = SKIP_SUFFIXES.map((s) => `!**/${s}`);
+  const dirExcludes = Array.from(SKIP_DIRS).map((d) => `!**/${d}/**`);
   return ['**/*.{ts,tsx}', ...excludes, ...dirExcludes];
 }
 
 function buildMinimalJestConfig(localPath: string): string {
   const collectCoverageFrom = buildCollectCoverageFrom()
-    .map(p => `    '${p}'`)
+    .map((p) => `    '${p}'`)
     .join(',\n');
 
   return `// Temporary jest config injected by CI scan. Deleted automatically after scan.
@@ -96,33 +117,41 @@ function buildMinimalJestConfig(localPath: string): string {
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 /** Recursively collect testable TypeScript source files. */
-async function walkTs(dir: string, root: string, out: string[] = []): Promise<string[]> {
+async function walkTs(
+  dir: string,
+  root: string,
+  out: string[] = [],
+): Promise<string[]> {
   let entries: Dirent[];
   try {
-    entries = await fsp.readdir(dir, { withFileTypes: true }) as Dirent[];
+    entries = await fsp.readdir(dir, { withFileTypes: true });
   } catch {
     return out; // unreadable directory — skip silently
   }
 
-  await Promise.all(entries.map(async (entry) => {
-    if (entry.isDirectory()) {
-      if (!SKIP_DIRS.has(entry.name)) await walkTs(path.join(dir, entry.name), root, out);
-    } else if (entry.isFile() && /\.tsx?$/.test(entry.name)) {
-      if (!SKIP_FILE_REGEXES.some(r => r.test(entry.name))) {
-        out.push(path.relative(root, path.join(dir, entry.name)));
+  await Promise.all(
+    entries.map(async (entry) => {
+      if (entry.isDirectory()) {
+        if (!SKIP_DIRS.has(entry.name))
+          await walkTs(path.join(dir, entry.name), root, out);
+      } else if (entry.isFile() && /\.tsx?$/.test(entry.name)) {
+        if (!SKIP_FILE_REGEXES.some((r) => r.test(entry.name))) {
+          out.push(path.relative(root, path.join(dir, entry.name)));
+        }
       }
-    }
-  }));
+    }),
+  );
 
   return out;
 }
 
 /** Detect whether a file or directory exists without throwing. */
 async function exists(p: string): Promise<boolean> {
-  return fsp.access(p).then(() => true).catch(() => false);
+  return fsp
+    .access(p)
+    .then(() => true)
+    .catch(() => false);
 }
-
-
 
 // ─── service ─────────────────────────────────────────────────────────────────
 
@@ -142,8 +171,9 @@ export class CoverageParserService implements ICoverageParser {
       // ── 1. Install dependencies ───────────────────────────────────────────
       // Freshly cloned repos never have node_modules. The exists() check
       // prevents expensive re-installs if this is ever called on a warm dir.
-      if (!await exists(path.join(localPath, 'node_modules'))) {
-        const installCmd = await this.sandboxExecutor.resolveInstallCmd(localPath);
+      if (!(await exists(path.join(localPath, 'node_modules')))) {
+        const installCmd =
+          await this.sandboxExecutor.resolveInstallCmd(localPath);
         this.logger.log(`Installing dependencies (${installCmd})...`);
         await this.sandboxExecutor.executeCommand(installCmd, {
           cwd: localPath,
@@ -157,31 +187,55 @@ export class CoverageParserService implements ICoverageParser {
       // repo's own dependencies and transform config. Fall back to the global
       // jest pre-installed in the Docker image (see Dockerfile).
       const localJestBin = path.join(localPath, 'node_modules', '.bin', 'jest');
-      const jestBin = await exists(localJestBin) ? localJestBin : '/jest-toolchain/node_modules/.bin/jest';
+      const jestBin = (await exists(localJestBin))
+        ? localJestBin
+        : '/jest-toolchain/node_modules/.bin/jest';
 
       // ── 3. Determine jest config ─────────────────────────────────────────
       // If the repo ships its own jest config we honour it completely.
       // Only if it has nothing do we inject our minimal config.
       const hasJestInPkg = await (async () => {
         try {
-          const pkg = JSON.parse(await fsp.readFile(path.join(localPath, 'package.json'), 'utf8'));
-          return !!(pkg.jest || pkg.dependencies?.jest || pkg.devDependencies?.jest);
-        } catch { return false; }
+          const pkg = JSON.parse(
+            await fsp.readFile(path.join(localPath, 'package.json'), 'utf8'),
+          );
+          return !!(
+            pkg.jest ||
+            pkg.dependencies?.jest ||
+            pkg.devDependencies?.jest
+          );
+        } catch {
+          return false;
+        }
       })();
 
       const knownConfigFiles = [
-        'jest.config.js',   'jest.config.ts',   'jest.config.cjs',
-        'jest.config.mjs',  'jest.config.json',
+        'jest.config.js',
+        'jest.config.ts',
+        'jest.config.cjs',
+        'jest.config.mjs',
+        'jest.config.json',
       ];
-      const hasExistingConfig = hasJestInPkg ||
-        (await Promise.all(knownConfigFiles.map(f => exists(path.join(localPath, f))))).some(Boolean);
+      const hasExistingConfig =
+        hasJestInPkg ||
+        (
+          await Promise.all(
+            knownConfigFiles.map((f) => exists(path.join(localPath, f))),
+          )
+        ).some(Boolean);
 
       let jestConfigFlag = '';
       if (!hasExistingConfig) {
-        await fsp.writeFile(tmpJestConfigPath, buildMinimalJestConfig(localPath), 'utf8');
+        await fsp.writeFile(
+          tmpJestConfigPath,
+          buildMinimalJestConfig(localPath),
+          'utf8',
+        );
         wroteConfig = true;
         jestConfigFlag = `--config=${TEMP_JEST_CONFIG_NAME}`;
-        this.logger.debug('Injected temporary jest config (no existing config found)');
+        this.logger.debug(
+          'Injected temporary jest config (no existing config found)',
+        );
       }
 
       // ── 4. Run jest with coverage ────────────────────────────────────────
@@ -200,35 +254,48 @@ export class CoverageParserService implements ICoverageParser {
         '--forceExit',
         '--ci',
         '--silent',
-      ].filter(Boolean).join(' ');
+      ]
+        .filter(Boolean)
+        .join(' ');
 
-      await this.sandboxExecutor.executeCommand(jestCmd, {
-        cwd: localPath,
-        timeout: JEST_TIMEOUT_MS,
-        maxBuffer: MAX_BUFFER_BYTES,
-        env: {
-          ...process.env,
-          NODE_PATH: '/jest-toolchain/node_modules',
-          // Suppress deprecation warnings from older repo deps —
-          // they clutter logs and consume maxBuffer needlessly.
-          NODE_OPTIONS: '--no-deprecation',
-        },
-      }).catch(err => {
-        // Jest exits with code 1 when tests fail — that is acceptable, we
-        // still receive a coverage-summary.json and can report percentages.
-        // Only re-throw truly fatal errors (spawn failure, ETIMEDOUT, etc.).
-        const isTestFailure = err?.code === 1 && err?.stderr !== undefined;
-        if (!isTestFailure) throw err;
-        this.logger.warn(
-          `Some tests failed during coverage run (expected for uncovered repos): ${err.stderr?.slice(0, 300)}`
-        );
-      });
+      await this.sandboxExecutor
+        .executeCommand(jestCmd, {
+          cwd: localPath,
+          timeout: JEST_TIMEOUT_MS,
+          maxBuffer: MAX_BUFFER_BYTES,
+          env: {
+            ...process.env,
+            NODE_PATH: '/jest-toolchain/node_modules',
+            // Suppress deprecation warnings from older repo deps —
+            // they clutter logs and consume maxBuffer needlessly.
+            NODE_OPTIONS: '--no-deprecation',
+          },
+        })
+        .catch((err) => {
+          // Jest exits with code 1 when tests fail — that is acceptable, we
+          // still receive a coverage-summary.json and can report percentages.
+          // Only re-throw truly fatal errors (spawn failure, ETIMEDOUT, etc.).
+          const isTestFailure = err?.code === 1 && err?.stderr !== undefined;
+          if (!isTestFailure) throw err;
+          this.logger.warn(
+            `Some tests failed during coverage run (expected for uncovered repos): ${err.stderr?.slice(0, 300)}`,
+          );
+        });
 
       // ── 5. Parse coverage-summary.json ───────────────────────────────────
-      const summaryPath = path.join(localPath, 'coverage', 'coverage-summary.json');
-      if (!await exists(summaryPath)) {
-        this.logger.warn('No coverage-summary.json produced. Returning all source files at 0%.');
-        return (await walkTs(localPath, localPath)).map(filePath => ({ filePath, linesCoverage: 0 }));
+      const summaryPath = path.join(
+        localPath,
+        'coverage',
+        'coverage-summary.json',
+      );
+      if (!(await exists(summaryPath))) {
+        this.logger.warn(
+          'No coverage-summary.json produced. Returning all source files at 0%.',
+        );
+        return (await walkTs(localPath, localPath)).map((filePath) => ({
+          filePath,
+          linesCoverage: 0,
+        }));
       }
 
       const coverageData: Record<string, { lines: { pct: number } }> =
@@ -243,7 +310,11 @@ export class CoverageParserService implements ICoverageParser {
         // Normalise absolute → relative. Coverage JSON may embed symlink paths;
         // we resolve both sides to get a canonical path before relativising.
         let real: string;
-        try { real = await fsp.realpath(absFilePath); } catch { real = absFilePath; }
+        try {
+          real = await fsp.realpath(absFilePath);
+        } catch {
+          real = absFilePath;
+        }
 
         let rel = path.relative(realLocalPath, real);
 
@@ -258,28 +329,35 @@ export class CoverageParserService implements ICoverageParser {
         if (/\.tsx?$/.test(rel)) {
           // Filter by SKIP_DIRS (ignores 'src/interfaces/foo.ts' and 'types/bar.ts')
           const pathParts = rel.split(path.sep);
-          if (pathParts.some(part => SKIP_DIRS.has(part))) continue;
-          
+          if (pathParts.some((part) => SKIP_DIRS.has(part))) continue;
+
           // Filter by SKIP_FILE_REGEXES (ignores 'app.ts' and 'foo.d.ts')
           const filename = path.basename(rel);
-          if (SKIP_FILE_REGEXES.some(r => r.test(filename))) continue;
+          if (SKIP_FILE_REGEXES.some((r) => r.test(filename))) continue;
 
           results.push({ filePath: rel, linesCoverage: data.lines?.pct ?? 0 });
         }
       }
 
       if (results.length === 0) {
-        this.logger.warn('coverage-summary.json had no file entries. Falling back to source file walk at 0%.');
-        return (await walkTs(localPath, localPath)).map(filePath => ({ filePath, linesCoverage: 0 }));
+        this.logger.warn(
+          'coverage-summary.json had no file entries. Falling back to source file walk at 0%.',
+        );
+        return (await walkTs(localPath, localPath)).map((filePath) => ({
+          filePath,
+          linesCoverage: 0,
+        }));
       }
 
-      this.logger.log(`Coverage scan complete: ${results.length} files analysed`);
+      this.logger.log(
+        `Coverage scan complete: ${results.length} files analysed`,
+      );
       return results;
-
     } catch (error: any) {
-      const msg = error?.code === 'ETIMEDOUT'
-        ? `Process timed out after ${error.killed ? 'being killed' : 'timeout'}`
-        : error?.message ?? String(error);
+      const msg =
+        error?.code === 'ETIMEDOUT'
+          ? `Process timed out after ${error.killed ? 'being killed' : 'timeout'}`
+          : (error?.message ?? String(error));
       this.logger.error(`Coverage scan failed: ${msg}`);
       throw new Error(`Coverage scanning failed: ${msg}`);
     } finally {
